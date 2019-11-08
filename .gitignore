@@ -1,0 +1,22 @@
+# specific files ignored
+.Rhistory
+.RData
+SoilHealthCalculator.html
+SoilHealthCalculator.docx
+
+# file or dir in this file will be ignored
+# data/
+.Rproj.user/
+
+# ignore all files in any directory named Manuscript/SHDB_cash*SHDB/files
+Manuscript/
+SoilHealthCalculator_cache/
+SoilHealthCalculator_files/
+Old/
+
+# ignore all .ini
+*.ini
+
+# project path
+# /G/My\ Drive/MyResearch/12.SoilHealthDB/SoilHealthCalculator
+.Rproj.user

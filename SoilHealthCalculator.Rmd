@@ -1,0 +1,471 @@
+---
+title: "SoilHealthCalculator"
+author: "Jinshi"
+date: "June 29, 2019"
+output:
+  word_document: default
+  html_document: default
+  pdf_document: default
+---
+
+
+
+```{r load package, message=FALSE, echo=FALSE}
+# Constants
+OUTPUT_DIR		<- "outputs/"
+DATA_DIR <- 'data'
+# Create output and log folders if they do not exist
+if(!file.exists(OUTPUT_DIR)) dir.create(OUTPUT_DIR)
+# install.packages('kableExtra')
+# Load required packages
+# install.packages('agricolae')
+library(agricolae)
+# install.packages('multcompView')
+library(multcompView)
+# install.packages("ncdf4")
+library(ncdf4)
+# install.packages("bootstrap")
+# install.packages("metafor")
+library("metafor")
+library("bootstrap")
+library(cowplot)
+library(data.table)
+library(ggplot2)
+theme_set(theme_bw())
+library(lubridate)
+library(kableExtra)
+library(knitr)
+library("ggpubr")
+library(reshape)
+# install.packages("ggmap")
+library(ggmap)
+# install.packages("maps")
+library(maps)
+# install.packages("mapdata")
+library(mapdata)
+# library(tidyr)
+# install.packages('car')
+library(car)
+library(dplyr)
+library(stringr)
+library(car)
+library(bootstrap)
+library("metafor")
+library("meta" )
+
+source("G:/My Drive/RSourceCode/basicFunctions.R")
+source("functions.R")
+```
+
+
+```{r preliminaries, message=FALSE, include=FALSE, echo=FALSE}
+# Set chunks defaults; these options will be applied to all subsequent chunks
+knitr::opts_chunk$set(results = 'hide', message = TRUE, include = TRUE, echo = FALSE, cache = TRUE,
+                      fig.height = 4, fig.width = 8)
+
+# Source all needed functions
+# source('RScripts/functions.R')
+
+```
+
+
+
+```{r loaddata}
+# load data in
+# getwd()
+SoilHealthCC <- read.csv('data/SoilHealthDB_V0.csv', header = T)
+
+# remove AFS, Orchard, and pasture
+SoilHealthCC %>%  filter(Conservation_Type != "AFS" & Conservation_Type != "Pasture" & Conservation_Type != "Orchard") -> SoilHealthCC
+
+SoilHealthCC <- SoilHealthCC[SoilHealthCC$Conservation_Type != "AFS",]
+SoilHealthCC$GrainCropGroup <- as.character(SoilHealthCC$GrainCropGroup)
+unique(SoilHealthCC$GrainCropGroup)
+SoilHealthCC <- SoilHealthCC[SoilHealthCC$GrainCropGroup != "Pasture", ]
+SoilHealthCC <- SoilHealthCC[SoilHealthCC$GrainCropGroup != "Orchard", ]
+SoilHealthCC$GrainCropGroup <- as.character(SoilHealthCC$GrainCropGroup)
+# unique(SoilHealthCC$GrainCropGroup)
+
+# write.csv(SoilHealthCC,"data/SoilHealthDB_V0.csv", row.names = FALSE)
+
+# load climate koeppon data
+koeppen <- read.table("data/Koeppen-Geiger-ASCII.txt", header = TRUE, sep = "")
+IGBP <- read.table("data/IGBP2010Point.txt", header = TRUE, sep = ",")
+ClimateDel <- read.csv("data/summarized_climate.csv")
+# f <- "data/ISSOIL.nc4"
+# file_cec <- "data/T_CEC_CLAY.nc4"
+# f2 <- "data/MU_GLOBAL.nc4"
+# HWSD_soil <- nc_open(f)
+# HWSD_cec <- nc_open(file_cec)
+# HWSD_unit <- nc_open(f2)
+
+
+# print(HWSD_cec)
+# koeppen %>% count(Cls)
+
+# get columns number hold indicators
+# last meta infor column
+which(colnames(SoilHealthCC) == 'CCTermination')
+colnames(SoilHealthCC[,c(1:which(colnames(SoilHealthCC) == 'CCTermination'))]) # all background information
+
+# get all response columns
+# first response infor column
+which(colnames(SoilHealthCC) == 'BiomassCash_C')
+
+# OC
+which(colnames(SoilHealthCC) == 'OC_C')
+# N
+which(colnames(SoilHealthCC) == 'N_C')
+# last useful parameter
+which(colnames(SoilHealthCC) == 'MBN_C')
+
+respcol <- c(seq(which(colnames(SoilHealthCC) == 'BiomassCash_C'),which(colnames(SoilHealthCC) == 'OC_C'),5)
+             ,seq(which(colnames(SoilHealthCC) == 'N_C'),which(colnames(SoilHealthCC) == 'MBN_C'),5)) # all response columns
+
+```
+
+
+## data calculation
+```{r}
+# SoilHealth_UANOVA <- shi_UANOVA() # take long time
+# write.csv(SoilHealth_UANOVA,"outputs/SoilHealth_UANOVA.csv", row.names = F)
+data <- read.csv("outputs/SoilHealth_UANOVA.csv")
+data %>% filter (TopGroup != "Tillage") -> data
+```
+
+
+
+## Sites spatial distribution
+```{r}
+# plot sites spatial distribution
+plot_sites_dist()
+```
+
+
+
+## t-test results
+```{r t-test, fig.width=8, fig.height=10}
+# soilhealth_indicator <- sum_shi_t() # takes long time
+sum_data <- read.csv("outputs/SoilHealth_t.csv")
+meta_forest()
+```
+
+## Normal distribution
+```{r plot Normal distribution of all response indicators}
+# plot Normal distribution 
+par( mar=c(2, 0.2, 0.2, 0.2)
+     , mai=c(0.6, 0.7, 0.0, 0.1)  # by inches, inner margin
+     , omi = c(0.0, 0.1, 0.4, 0.1)  # by inches, outer margin
+     , mgp = c(0.5, 0.5, 0) # set distance of axis
+     , tcl = 0.4
+     , cex.axis = 1.0
+     , mfrow=c(1,2) )
+
+for (i in c(1:length(respcol)) ) {
+# for (i in 2) {
+  
+  # i = 2
+  subdata <- SoilHealthCC[, c(which(colnames(SoilHealthCC) == 'StudyID'|colnames(SoilHealthCC) == 'ExperimentID'|colnames(SoilHealthCC) == 'Tillage_Top_T')
+                              , respcol[i], respcol[i]+1
+                              )]
+  
+  subdata <- subdata[!is.na(subdata[,4]), ]
+  
+  subdata$yi <- log(subdata[,5])-log(subdata[,4])
+  
+  colnames(subdata)
+  
+  if (colnames (subdata)[4] == "Erosion_C" |colnames (subdata)[4] == "Runoff_C"| colnames (subdata)[4] == "Diseases_C"
+      | colnames (subdata)[4] == "Leaching_C"| colnames (subdata)[4] == "Weed_C"| colnames (subdata)[4] == "Pests_C")
+  {
+    # is.finite(x) value change to min of yi
+    subdata[is.infinite(subdata$yi),]$yi <- ifelse (subdata[is.infinite(subdata$yi),]$yi>0, max(subdata[is.finite(subdata$yi),]$yi)
+                                                    , min(subdata[is.finite(subdata$yi),]$yi))
+  }
+  
+  subdata <- subdata[!is.na(subdata$yi),]
+  
+  # hist gram and QQ plot *********************************************************************
+  list_histo <- hist(subdata$yi, col='gray',breaks=50
+       , las = 1
+       , cex = 1
+       , main = ""
+       , xlab = ""
+       , ylab = "" )
+  # lines(density(Shannon_ANOVA$residuals), col="blue", lwd=2)
+  box()
+  mtext(side = 1, text = expression("Response Ratio"), line = 1.75, cex=1, outer = F)
+  mtext(side = 2, text = expression("Frequency (n)"), line = 2.0, cex=1.0, outer = F)
+  
+  # shapiro.test
+  shapiro <- shapiro.test(subdata$yi)
+  shapiro_p <- shapiro$p.value
+  # text(min(subdata$yi)*0.95, max(list_histo$counts)*0.95
+  #      , paste("shapiro(p) = ",round(shapiro_p, 2)), cex = 1, adj = 0)
+ 
+  # QQ plot
+  # ?qqPlot()
+  qqPlot(subdata$yi
+         , las = 1
+         , cex = 1
+         , pch = 1
+         , main = ""
+         , xlab = ""
+         , ylab = ""
+         , col.lines  = 'red')
+  
+  mtext(side = 1, text = expression("Normal theoretical quantiles"), line = 1.75, cex=1, outer = F)
+  mtext(side = 2, text = expression("Data quantiles"), line = 2.0, cex=1.0, outer = F)
+  
+  
+  # other information
+  response <- colnames(subdata)[4]
+  response <- substr(response,1, (nchar(response)-2))
+  n_obs <- length(subdata[,1])
+  n_study <- length(unique(subdata$StudyID))
+  
+  mtext(side = 3, text = paste(response," (",n_obs,"/",n_study,")", sep=""), line = 0.5, cex=1, outer = T)
+  
+  
+  print(paste("**********", i, response, "**********"))
+  
+}
+
+```
+
+
+## UANOVA test
+```{r plot UANOVA results, fig.height = 6, fig.width = 12}
+# 
+par( mar=c(2, 0.2, 0.2, 0.2)
+     , mai=c(0.15, 0.6, 0.1, 0.1)  # by inches, inner margin
+     , omi = c(1.6, 0.3, 0.3, 0.1)  # by inches, outer margin 
+     , mgp = c(0, 0.3, 0) # set distance of axis
+     , tcl = 0.4
+     , cex.axis = 1.25
+     , mfrow=c(1,1))
+
+var_ID <- unique(data$ID)
+
+for (i in 1:length(var_ID)) {
+# for (i in 1) {
+  
+  # i = 33
+  subdata <- data[data$ID == var_ID[i],]
+  subdata %>% filter(SubGroup != "NotAvailable") -> subdata
+  
+  # subdata$x_value <- c(1,3:4, 6:8, 10:13)
+  subdata$x_value <- c(1:length(subdata$ID))
+  
+  y_min <- min(subdata$Low, na.rm = T)
+  y_max <- max(subdata$High, na.rm = T)
+
+  
+  plot(subdata$Mean ~ subdata$x_value, cex=1.25, lwd=2
+       # ,xlim=c(0,21),ylim=c(1,16)
+       , las=1
+       , xaxt='n'
+       , xlim = c(1, length(subdata$ID))
+       , ylim = c(y_min, y_max)
+       , xlab = '', ylab='', main=''
+       , col = ifelse (subdata$obs < 5, "red", "black")
+       , pch = ifelse (subdata$obs < 5,4,16)
+       )
+  
+  abline(h=0, col="red", lty=2, lwd=2)
+  
+  arrows(subdata$x_value,subdata$Low,subdata$x_value,subdata$High
+         ,code=3,length=0.0,angle=90,col=ifelse (subdata$obs < 5, "red", "black"),lwd=2)
+  
+  axis (side = 1, at = subdata$x_value, labels = paste(subdata$SubGroup, " (", subdata$obs, ")", sep = "")
+        # , cex=0.5
+        , las = 2
+        )
+  
+  # get p value information of each anova
+  P_climate <- round(subdata[subdata$TopGroup=="Climate",]$p_UB_Anova[2], 2) # climate anoava
+  P_texture <- round(subdata[subdata$TopGroup=="Texture",]$p_UB_Anova[2], 2) # texture anoava
+  P_CoverCrop <- round(subdata[subdata$TopGroup=="Cover crop",]$p_UB_Anova[2], 2) # CC anoava
+  P_GrainCrop <- round(subdata[subdata$TopGroup=="Grain crop",]$p_UB_Anova[2], 2) # Grain crop anoava
+  
+  
+  # add 2 rectangles 
+  rect(1.5, y_min*ifelse(y_min>0, 0.5, 2), 5.5, y_max*ifelse(y_max<0, 0.1, 2), col= rgb(1,0,0, alpha = 0.5)
+       , border = rgb(1,0,0, alpha = 0.5))
+  
+  rect(8.5, y_min*ifelse(y_min>0, 0.5, 2), 12.5, y_max*ifelse(y_max<0, 0.1, 2), col= rgb(1,1,0, alpha = 0.5)
+       , border = rgb(1,1,0, alpha = 0.5))
+  
+  
+  axis (side = 3, at = c(1, 3.5, 7, 10.5, 16), cex=1.25, labels = c("all", paste("Climate (p=", P_climate, ")", sep = "")
+                                                                      , paste("Texture (p=", P_texture, ")", sep = "")
+                                                                      , paste("Cover crops (p=", P_CoverCrop, ")", sep = "")
+                                                                      , paste("Cash crops (p=", P_GrainCrop, ")", sep = "")  ))
+  
+  # ?rect()
+  # add x labels
+  
+  mtext(side = 2, text = paste(subdata$Response[1], " (log RR)", sep=""), line = -0.25, cex=1.25, outer = T)
+  
+}
+
+```
+
+
+
+## Figures for data in brief
+```{r DIB figure 1, fig.height = 8, fig.width = 8}
+SoilHealthCC %>% group_by(Country) %>% tally(sort = T) %>% 
+  ggplot(aes(x = Country, y=n)) + geom_bar(stat="identity", fill = "gray", col = "black") +
+  # ylim(0, 1000) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.25)) +
+  labs(y = expression(Count)) -> p1
+
+SoilHealthCC %>% group_by(YearPublication) %>% tally(sort = T) %>% 
+  ggplot(aes(x = YearPublication, y=n)) + geom_bar(stat="identity", fill = "gray", col = "black") +
+  xlim(1980, 2018) +
+  # theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.25)) +
+  labs(x = expression(Year~published), y = expression(Count)) -> p2
+
+plot_grid(p1, p2, labels = c("a", "b"), hjust = -2, vjust = 1.25, ncol = 1, rel_heights = c(1.2, 1))
+ggsave("Manuscript/Datainbrief/Figures/Figure1.jpg", width = 8, height = 7, dpi = 300, units = "in")
+
+```
+
+
+
+```{r DIB figure 2}
+
+tiff("Manuscript/Datainbrief/Figures/Figure2.tiff", width = 8, height = 4, pointsize = 1/300, units = 'in', res = 300)
+par( mar=c(2, 0.2, 0.2, 0.2)
+     , mai=c(0.6, 0.7, 0.0, 0.1)  # by inches, inner margin
+     , omi = c(0.0, 0.1, 0.4, 0.1)  # by inches, outer margin
+     , mgp = c(0.5, 0.5, 0) # set distance of axis
+     , tcl = 0.4
+     , cex.axis = 1.0
+     , mfrow=c(1,2) )
+
+for (i in 2) {
+  
+  SoilHealthCC %>% select(StudyID, ExperimentID, Tillage_Top_T, Yield_C, Yield_T) -> subdata
+  subdata %>% filter(!is.na(Yield_C)) -> subdata
+  subdata %>% mutate(yi = log(Yield_T) - log(Yield_C)) -> subdata
+  subdata %>% filter(!is.na(yi)) -> subdata
+  
+  # hist gram and QQ plot *********************************************************************
+  list_histo <- hist(subdata$yi, col='gray',breaks=50
+       , las = 1
+       , cex = 1
+       , main = ""
+       , xlab = ""
+       , ylab = "" )
+  # lines(density(Shannon_ANOVA$residuals), col="blue", lwd=2)
+  box()
+  mtext(side = 1, text = expression("Response Ratio"), line = 1.75, cex=1, outer = F)
+  mtext(side = 2, text = expression("Frequency (n)"), line = 2.0, cex=1.0, outer = F)
+  
+  # shapiro.test
+  shapiro <- shapiro.test(subdata$yi)
+  shapiro_p <- shapiro$p.value
+  # text(min(subdata$yi)*0.95, max(list_histo$counts)*0.95
+  #      , paste("shapiro(p) = ",round(shapiro_p, 2)), cex = 1, adj = 0)
+ 
+  # QQ plot
+  qqPlot(subdata$yi
+         , las = 1
+         , cex = 1
+         , pch = 1
+         , main = ""
+         , xlab = ""
+         , ylab = ""
+         , col.lines  = 'red')
+  
+  mtext(side = 1, text = expression("Normal theoretical quantiles"), line = 1.75, cex=1, outer = F)
+  mtext(side = 2, text = expression("Data quantiles"), line = 2.0, cex=1.0, outer = F)
+  
+  # other information
+  response <- colnames(subdata)[4]
+  response <- substr(response,1, (nchar(response)-2))
+  n_obs <- length(subdata[,1])
+  n_study <- length(unique(subdata$StudyID))
+  
+  mtext(side = 3, text = paste(response," (",n_obs,"/",n_study,")", sep=""), line = 0.5, cex=1, outer = T)
+}
+
+dev.off()
+
+```
+
+
+```{r DIB figure 3, fig.height = 6, fig.width = 10}
+tiff("Manuscript/Datainbrief/Figures/Figure3.tiff", width = 9, height = 6, pointsize = 1/300, units = 'in', res = 300)
+par( mar=c(2, 0.2, 0.2, 0.2)
+     , mai=c(0.15, 0.6, 0.1, 0.1)  # by inches, inner margin
+     , omi = c(1.6, 0.3, 0.3, 0.1)  # by inches, outer margin 
+     , mgp = c(0, 0.3, 0) # set distance of axis
+     , tcl = 0.4
+     # , cex.axis = 1.25
+     , mfrow=c(1,1))
+
+var_ID <- unique(data$ID)
+
+
+for (i in 2) {
+  
+  subdata <- data[data$ID == var_ID[i],]
+  subdata %>% filter(SubGroup != "NotAvailable") -> subdata
+  
+  # subdata$x_value <- c(1,3:4, 6:8, 10:13)
+  subdata$x_value <- c(1:length(subdata$ID))
+  
+  y_min <- min(subdata$Low, na.rm = T)
+  y_max <- max(subdata$High, na.rm = T)
+
+  
+  plot(subdata$Mean ~ subdata$x_value, cex=1.25, lwd=2
+       # ,xlim=c(0,21),ylim=c(1,16)
+       , las=1
+       , xaxt='n'
+       , xlim = c(1, length(subdata$ID))
+       , ylim = c(y_min, y_max)
+       , xlab = '', ylab='', main=''
+       , col = ifelse (subdata$obs < 5, "red", "black")
+       , pch = ifelse (subdata$obs < 5,4,16)
+       )
+  
+  abline(h=0, col="red", lty=2, lwd=2)
+  
+  arrows(subdata$x_value,subdata$Low,subdata$x_value,subdata$High
+         ,code=3,length=0.0,angle=90,col=ifelse (subdata$obs < 5, "red", "black"),lwd=2)
+  
+  axis (side = 1, at = subdata$x_value, labels = paste(subdata$SubGroup, " (", subdata$obs, ")", sep = "")
+        # , cex=0.5
+        , las = 2
+        )
+  
+  # get p value information of each anova
+  P_climate <- round(subdata[subdata$TopGroup=="Climate",]$p_UB_Anova[2], 2) # climate anoava
+  P_texture <- round(subdata[subdata$TopGroup=="Texture",]$p_UB_Anova[2], 2) # texture anoava
+  P_CoverCrop <- round(subdata[subdata$TopGroup=="Cover crop",]$p_UB_Anova[2], 2) # CC anoava
+  P_GrainCrop <- round(subdata[subdata$TopGroup=="Grain crop",]$p_UB_Anova[2], 2) # Grain crop anoava
+  
+  
+  # add 2 rectangles 
+  rect(1.5, y_min*ifelse(y_min>0, 0.5, 2), 5.5, y_max*ifelse(y_max<0, 0.1, 2), col= rgb(1,0,0, alpha = 0.5)
+       , border = rgb(1,0,0, alpha = 0.5))
+  
+  rect(8.5, y_min*ifelse(y_min>0, 0.5, 2), 12.5, y_max*ifelse(y_max<0, 0.1, 2), col= rgb(1,1,0, alpha = 0.5)
+       , border = rgb(1,1,0, alpha = 0.5))
+  
+  
+  axis (side = 3, at = c(1, 3.5, 7, 10.5, 16), cex=1, labels = c("all", paste("Climate (p=", P_climate, ")", sep = "")
+                                                                      , paste("Texture (p=", P_texture, ")", sep = "")
+                                                                      , paste("Cover crops (p=", P_CoverCrop, ")", sep = "")
+                                                                      , paste("Cash crops (p=", P_GrainCrop, ")", sep = "")  ))
+  
+  # add x labels
+  mtext(side = 2, text = paste("Yield", " (log RR)", sep=""), line = -0.25, cex=1.25, outer = T)
+}
+dev.off()
+```
+
