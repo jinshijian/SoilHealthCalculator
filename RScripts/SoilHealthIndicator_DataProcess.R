@@ -63,13 +63,13 @@ write.csv(SoilHealth_sum,"outputs/SoilHealth_Indicator_Sum_Process.csv", row.nam
 # pivot
 #*****************************************************************************************************************
 
-SoilHealth_sum <- read.csv("9.SoilHealth_Indicator_Sum_Process.csv")
+SoilHealth_sum <- read.csv("outputs/SoilHealth_Indicator_Sum_Process.csv")
   
 colnames(SoilHealth_sum)
 class(SoilHealth_sum$ID)
 
 var_ID <- sort(unique(SoilHealth_sum$ID))
-length(var_ID) * 448
+length(var_ID) * 336
 
 # do first ID first
 for (i in 1) {
@@ -96,8 +96,9 @@ for (i in 2:length(var_ID)) {
 }
 
 head(Reshape_data)
+nrow(Reshape_data)
 
-write.csv(Reshape_data,"10.SoilHealth_Indicator_Sum_Reshape.csv", row.names = F)
+write.csv(Reshape_data,"outputs/SoilHealth_Indicator_Sum_Reshape.csv", row.names = F)
 
 
 #*****************************************************************************************************************

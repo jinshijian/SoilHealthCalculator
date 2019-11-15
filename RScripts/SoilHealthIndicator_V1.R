@@ -289,10 +289,10 @@ respcol <- c(seq(which(colnames(SoilHealthCC) == 'BiomassCash_C'),which(colnames
 var_climate <- c("Tropical", "Arid", "Temperate", "Boreal")
 var_GrainCrop <- c("Corn","Soybean","Wheat", "Vegetable", "CS", "CSW", "Other")
 var_CoverCrop <- c("Legume", "Grass", "MTT", "OtherCC")
-var_Texture <- c("Coarse", "Medium", "Fine", "NotAvailable")
+var_Texture <- c("Coarse", "Medium", "Fine")
 # var_tillage <- c("CT", "RT", "NT", "NotAvailable")
 
-4*7*4*4
+4*7*4*3
 
 unique(SoilHealthCC$Top_Climate)
 unique(SoilHealthCC$TopGrainCrop)
