@@ -98,7 +98,7 @@ for (i in 2:length(var_ID)) {
 head(Reshape_data)
 nrow(Reshape_data)
 
-write.csv(Reshape_data,"outputs/SoilHealth_Indicator_Sum_Reshape.csv", row.names = F)
+write.csv(Reshape_data,"outputs/SoilHealth_Calculator.csv", row.names = F)
 
 
 #*****************************************************************************************************************

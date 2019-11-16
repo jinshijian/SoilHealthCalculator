@@ -1,6 +1,6 @@
 
 #*****************************************************************************************************************
-# Step 1.1: Prepare data
+# data process
 #*****************************************************************************************************************
 
 soilhealthData <- read.csv('outputs/SoilHealth_Indicator_Sum.csv', header = T)
@@ -33,3 +33,5 @@ for (i in var_ID[-1]){
   allsum <- rbind(allsum, ithsum)
   
 }
+
+write.csv(allsum,"outputs/Hierarchy_Perc_Sum.csv", row.names = F)

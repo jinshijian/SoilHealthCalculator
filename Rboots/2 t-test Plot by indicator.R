@@ -21,7 +21,9 @@ unique (sum_data$All)
 
 #1.1 plot meta forest 
 
-tiff("outputs/2 boot-test by indicator.tiff", width = 8, height = 10, pointsize = 1/300, units = 'in', res = 300)
+# tiff("outputs/2 boot-test by indicator.tiff", width = 8, height = 10, pointsize = 1/300, units = 'in', res = 300)
+# pdf("Manuscript/Datainbrief/Figures/Figure3.pdf", width = 8, height = 10)
+png("Manuscript/Datainbrief/Figures/Figure3.png", width = 8, height = 10)
 
 par( mar=c(2, 0.2, 0.2, 0.2)
      , mai=c(0.15, 0.1, 0.1, 0.1)  # by inches, inner margin

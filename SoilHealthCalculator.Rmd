@@ -328,7 +328,69 @@ SoilHealthCC %>% group_by(YearPublication) %>% tally(sort = T) %>%
   labs(x = expression(Year~published), y = expression(Count)) -> p2
 
 plot_grid(p1, p2, labels = c("a", "b"), hjust = -2, vjust = 1.25, ncol = 1, rel_heights = c(1.2, 1))
-ggsave("Manuscript/Datainbrief/Figures/Figure1.jpg", width = 8, height = 7, dpi = 300, units = "in")
+ggsave("Manuscript/Datainbrief/Figures/Figure1.pdf", width = 8, height = 7, units = "in")
+
+```
+
+
+```{r function for raw boots comparison}
+raw_boots_compare <- function (SoilHealthCC, i, x_label) {
+  
+  subdata <- SoilHealthCC[, c(which(colnames(SoilHealthCC) == 'StudyID'|colnames(SoilHealthCC) == 'ExperimentID'
+                                    |colnames(SoilHealthCC) == 'Tillage_Top_T')
+                              , respcol[i], respcol[i]+1
+                              )]
+  
+  subdata <- subdata[!is.na(subdata[,4]), ]
+  
+  subdata$yi <- log(subdata[,5])-log(subdata[,4])
+  
+  # if (colnames (subdata)[4] == "Erosion_C" |colnames (subdata)[4] == "Runoff_C"| colnames (subdata)[4] == "Diseases_C"
+  #     | colnames (subdata)[4] == "Leaching_C"| colnames (subdata)[4] == "Weed_C"| colnames (subdata)[4] == "Pests_C")
+  # {
+  #   # is.finite(x) value change to min of yi
+  #   subdata[is.infinite(subdata$yi),]$yi <- ifelse (subdata[is.infinite(subdata$yi),]$yi>0
+  #                                                   , max(subdata[is.finite(subdata$yi),]$yi)
+  #                                                   , min(subdata[is.finite(subdata$yi),]$yi))
+  # }
+  
+  subdata <- subdata[!is.na(subdata$yi),]
+
+  
+  # other information
+  # response <- colnames(subdata)[4]
+  # response <- substr(response,1, (nchar(response)-2))
+  n_obs <- length(subdata[,1])
+  n_study <- length(unique(subdata$StudyID))
+  var_lab <- paste(x_label," (",n_obs,"/",n_study,")", sep="")
+  
+  # histgram for raw data
+  raw_plot <- tibble(Raw = subdata$yi) %>%
+    ggplot(., aes(Raw)) + geom_histogram(color="black", fill="gray", bins = 30) +
+    labs(x = var_lab, y = "Count")
+  
+  raw_qq <- ggplot(tibble(Raw = subdata$yi), aes(sample = Raw)) +
+    stat_qq(alpha = 0.5) +
+    stat_qq_line(size = 1, col = "blue", alpha = 0.5) +
+    labs(x = "Theoretical quantiles", y = "Sample quantiles ")
+  
+  # histgram for boosting results
+  k =5000
+  mysamples = replicate(k, sample(subdata$yi, replace=T))
+  mymeans = apply(mysamples, 2, mean)
+  
+  boots_plot <- tibble(Boots = mymeans) %>%
+    ggplot(., aes(Boots)) + geom_histogram(color="black", fill="gray", bins = 30) +
+    # theme(axis.title.x = element_blank())
+    labs(x = var_lab, y = "Count")
+  
+  boot_qq <- ggplot(tibble(Boots = mymeans), aes(sample = mymeans)) +
+    stat_qq(alpha = 0.5) +
+    stat_qq_line(size = 1, col = "blue", alpha = 0.5) +
+    labs(x = "Theoretical quantiles", y = "Sample quantiles ")
+  
+  plot_grid(raw_plot, raw_qq, boots_plot, boot_qq, nrow = 1)
+}
 
 ```
 
@@ -336,7 +398,20 @@ ggsave("Manuscript/Datainbrief/Figures/Figure1.jpg", width = 8, height = 7, dpi 
 
 ```{r DIB figure 2}
 
-tiff("Manuscript/Datainbrief/Figures/Figure2.tiff", width = 8, height = 4, pointsize = 1/300, units = 'in', res = 300)
+yield_plot <- raw_boots_compare(SoilHealthCC, 2, "Yield")
+oc_plot <- raw_boots_compare(SoilHealthCC, 4, "SOC")
+n_plot <- raw_boots_compare(SoilHealthCC, 5, "Nitrogen")
+agg_plot <- raw_boots_compare(SoilHealthCC, 12, "Aggregation")
+
+plot_grid (yield_plot, oc_plot, n_plot, agg_plot, ncol = 1)
+
+ggsave("Manuscript/Datainbrief/Figures/Figure2.pdf", width = 8, height = 8, units = c("in"))
+```
+
+
+```{r }
+
+# tiff("Manuscript/Datainbrief/Figures/Figure2.tiff", width = 8, height = 4, pointsize = 1/300, units = 'in', res = 300)
 par( mar=c(2, 0.2, 0.2, 0.2)
      , mai=c(0.6, 0.7, 0.0, 0.1)  # by inches, inner margin
      , omi = c(0.0, 0.1, 0.4, 0.1)  # by inches, outer margin
@@ -364,6 +439,16 @@ for (i in 2) {
   mtext(side = 1, text = expression("Response Ratio"), line = 1.75, cex=1, outer = F)
   mtext(side = 2, text = expression("Frequency (n)"), line = 2.0, cex=1.0, outer = F)
   
+  ## resample by boostrapping
+  k = 5000
+  resamp_boot <- function(n, x) {
+    mean(sample(x, n, replace = TRUE))
+  }
+  
+ 
+  hist(mymeans, col = rgb(1,1,0,alpha = 0.5)
+       , add = T)
+  
   # shapiro.test
   shapiro <- shapiro.test(subdata$yi)
   shapiro_p <- shapiro$p.value
@@ -380,6 +465,7 @@ for (i in 2) {
          , ylab = ""
          , col.lines  = 'red')
   
+  
   mtext(side = 1, text = expression("Normal theoretical quantiles"), line = 1.75, cex=1, outer = F)
   mtext(side = 2, text = expression("Data quantiles"), line = 2.0, cex=1.0, outer = F)
   
@@ -392,25 +478,26 @@ for (i in 2) {
   mtext(side = 3, text = paste(response," (",n_obs,"/",n_study,")", sep=""), line = 0.5, cex=1, outer = T)
 }
 
-dev.off()
+# dev.off()
 
 ```
 
 
-```{r DIB figure 3, fig.height = 6, fig.width = 10}
-tiff("Manuscript/Datainbrief/Figures/Figure3.tiff", width = 9, height = 6, pointsize = 1/300, units = 'in', res = 300)
+```{r DIB figure 4, fig.height = 12, fig.width = 10}
+
+pdf("Manuscript/Datainbrief/Figures/Figure4.pdf", width = 8, height = 8)
 par( mar=c(2, 0.2, 0.2, 0.2)
      , mai=c(0.15, 0.6, 0.1, 0.1)  # by inches, inner margin
-     , omi = c(1.6, 0.3, 0.3, 0.1)  # by inches, outer margin 
+     , omi = c(0.6, 0.3, 0.3, 0.1)  # by inches, outer margin 
      , mgp = c(0, 0.3, 0) # set distance of axis
      , tcl = 0.4
-     # , cex.axis = 1.25
-     , mfrow=c(1,1))
+     , cex.axis = 1.25
+     , mfrow=c(4,1))
 
 var_ID <- unique(data$ID)
+var_ind <- c("1","Yield","3", "SOC", "Nitrogen","6","7","8","9","10","11", "Aggregation")
 
-
-for (i in 2) {
+for (i in c(2,4,5,12)) {
   
   subdata <- data[data$ID == var_ID[i],]
   subdata %>% filter(SubGroup != "NotAvailable") -> subdata
@@ -420,6 +507,9 @@ for (i in 2) {
   
   y_min <- min(subdata$Low, na.rm = T)
   y_max <- max(subdata$High, na.rm = T)
+  
+  # var_ind <- ifelse(i == 12, "Aggregation_C", as.character(subdata$Response[1]) )
+  # var_ind <- as.character(subdata$Response[1])
 
   
   plot(subdata$Mean ~ subdata$x_value, cex=1.25, lwd=2
@@ -438,11 +528,7 @@ for (i in 2) {
   arrows(subdata$x_value,subdata$Low,subdata$x_value,subdata$High
          ,code=3,length=0.0,angle=90,col=ifelse (subdata$obs < 5, "red", "black"),lwd=2)
   
-  axis (side = 1, at = subdata$x_value, labels = paste(subdata$SubGroup, " (", subdata$obs, ")", sep = "")
-        # , cex=0.5
-        , las = 2
-        )
-  
+
   # get p value information of each anova
   P_climate <- round(subdata[subdata$TopGroup=="Climate",]$p_UB_Anova[2], 2) # climate anoava
   P_texture <- round(subdata[subdata$TopGroup=="Texture",]$p_UB_Anova[2], 2) # texture anoava
@@ -457,15 +543,22 @@ for (i in 2) {
   rect(8.5, y_min*ifelse(y_min>0, 0.5, 2), 12.5, y_max*ifelse(y_max<0, 0.1, 2), col= rgb(1,1,0, alpha = 0.5)
        , border = rgb(1,1,0, alpha = 0.5))
   
+  mtext(side = 2, text = paste(var_ind[i], " (log RR)", sep=""), line = 2.5, cex=1.05, outer = F)
   
-  axis (side = 3, at = c(1, 3.5, 7, 10.5, 16), cex=1, labels = c("all", paste("Climate (p=", P_climate, ")", sep = "")
+  axis (side = 3, at = c(1, 3.5, 7, 10.5, 16), cex=1.25, labels = c("all", paste("Climate (p=", P_climate, ")", sep = "")
                                                                       , paste("Texture (p=", P_texture, ")", sep = "")
                                                                       , paste("Cover crops (p=", P_CoverCrop, ")", sep = "")
                                                                       , paste("Cash crops (p=", P_GrainCrop, ")", sep = "")  ))
   
   # add x labels
-  mtext(side = 2, text = paste("Yield", " (log RR)", sep=""), line = -0.25, cex=1.25, outer = T)
+  
 }
+
+axis (side = 1, at = subdata$x_value, labels = paste(subdata$SubGroup, sep = "")
+      , cex=1.25
+      , las = 2
+      )
+
 dev.off()
 ```
 
