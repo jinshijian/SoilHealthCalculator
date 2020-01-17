@@ -139,6 +139,8 @@ data %>% filter (TopGroup != "Tillage") -> data
 ```{r}
 # plot sites spatial distribution
 plot_sites_dist()
+ggsave("Manuscript/STR/Figures/Figure1.pdf", width = 8, height = 4, units = c("in"))
+
 ```
 
 
@@ -147,7 +149,9 @@ plot_sites_dist()
 ```{r t-test, fig.width=8, fig.height=10}
 # soilhealth_indicator <- sum_shi_t() # takes long time
 sum_data <- read.csv("outputs/SoilHealth_t.csv")
+pdf("Manuscript/STR/Figures/Figure3.pdf", width = 8, height = 10)
 meta_forest()
+dev.off()
 ```
 
 ## Normal distribution

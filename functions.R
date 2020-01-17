@@ -62,7 +62,7 @@ plot_sites_dist <- function () {
   x_cc <- rep(-170, 4)
   size <- c(9, 6, 3, 1)
   # sizeN <- c(>91, 61-90, 31-60, <30)
-  y <- c(0, -15, -30, -45)
+  y <- c(-10, -25, -40, -55)
   
   cc_legend <- cbind (x_cc, y, size)
   cc_legend <- as.data.frame(cc_legend)
@@ -103,13 +103,13 @@ plot_sites_dist <- function () {
   sitemap1 <- sitemap1 + 
     geom_point(data = cc_legend, aes(x=cc_legend$x_cc, y=cc_legend$y), color = "red" 
                , shape=1, size = cc_legend$size) +
-    annotate("text", x = -152, y = 0, label = "( > 91 )", size = 4.5, adj = 0)+
-    annotate("text", x = -152, y = -15, label = "( 61-90 )", size = 4.5, adj = 0)+
-    annotate("text", x = -152, y = -30, label = "( 31-60 )", size = 4.5, adj = 0)+
-    annotate("text", x = -152, y = -45, label = "( < 30 )", size = 4.5, adj = 0) +
-    annotate("text", x = -172, y = 30, label = "Legend", size = 5, adj = 0) + 
-    annotate("text", x = -175, y = 15, label = "CC  Obs ( n )", size = 4.5, adj = 0)+
-    annotate("text", x = 0, y = -55, label = "All sites (4024/269)", size = 4.5)
+    annotate("text", x = -152, y = -10, label = "( > 91 )", size = 4.5, adj = 0)+
+    annotate("text", x = -152, y = -25, label = "( 61-90 )", size = 4.5, adj = 0)+
+    annotate("text", x = -152, y = -40, label = "( 31-60 )", size = 4.5, adj = 0)+
+    annotate("text", x = -152, y = -55, label = "( < 30 )", size = 4.5, adj = 0) +
+    annotate("text", x = -172, y = 20, label = "Legend", size = 5, adj = 0) + 
+    annotate("text", x = -175, y = 5, label = "CC  Obs ( n )", size = 4.5, adj = 0)+
+    annotate("text", x = 0, y = -50, label = "All sites (4024/269)", size = 4.5)
   
   sitemap1 
 }
